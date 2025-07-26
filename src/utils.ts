@@ -3,6 +3,12 @@
  * 包含通用的工具函数
  */
 
+import { ChildProcess } from "child_process";
+import { exec } from "child_process";
+import { promisify } from "util";
+
+const execAsync = promisify(exec);
+
 /**
  * 调试日志输出
  */
@@ -16,6 +22,50 @@ export function debugLog(...args: any[]): void {
  */
 export function sleep(second: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, second * 1000));
+}
+
+/**
+ * 跨平台关闭进程
+ * @param process 要关闭的进程对象
+ * @param port 可选的端口号，用于Windows平台强制关闭
+ */
+export async function killProcess(process: ChildProcess, port?: number): Promise<void> {
+  const platform = require('os').platform();
+  
+  try {
+    // 首先尝试优雅地关闭进程
+    if (process.pid) {
+      if (platform === 'win32') {
+        // Windows平台：使用taskkill命令强制关闭进程树
+        try {
+          await execAsync(`taskkill /F /T /PID ${process.pid}`);
+          debugLog(`Windows: 已强制关闭进程 ${process.pid}`);
+        } catch (error) {
+          debugLog(`Windows: 关闭进程 ${process.pid} 失败:`, error);
+          
+          // 如果指定了端口，尝试通过端口查找并关闭Chrome进程
+          if (port) {
+            try {
+              await execAsync(`for /f "tokens=5" %a in ('netstat -aon ^| findstr :${port}') do taskkill /F /PID %a`);
+              debugLog(`Windows: 已通过端口 ${port} 关闭相关进程`);
+            } catch (portError) {
+              debugLog(`Windows: 通过端口 ${port} 关闭进程失败:`, portError);
+            }
+          }
+        }
+      } else {
+        // Unix/Linux/macOS平台：使用kill命令
+        try {
+          await execAsync(`kill -9 ${process.pid}`);
+          debugLog(`Unix: 已强制关闭进程 ${process.pid}`);
+        } catch (error) {
+          debugLog(`Unix: 关闭进程 ${process.pid} 失败:`, error);
+        }
+      }
+    }
+  } catch (error) {
+    debugLog(`关闭进程时发生错误:`, error);
+  }
 }
 
 /**

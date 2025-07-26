@@ -3,10 +3,10 @@
  * 使用Playwright自动化Google账户登录
  */
 
-import { launchBrowserSession } from "./browserManager";
+import { launchBrowserSession, browserSessionManager } from "./browserManager";
 import { performGoogleLogin, AccountInfo } from "./googleLogin";
 import { accountManager } from "./accountManager";
-import { debugLog } from "./utils";
+import { debugLog, killProcess } from "./utils";
 
 /**
  * 主函数 - 执行Google登录自动化流程
@@ -46,9 +46,16 @@ export async function main(sessionId?: string, accountInfo?: AccountInfo): Promi
       browserSession.page.bringToFront();
     } catch (error) {
       // 清理下浏览器
-      browserSession.process.kill();
-      browserSession.browser.close();
+      try {
+        await killProcess(browserSession.process, browserSession.port);
+        await browserSession.browser.close();
+      } catch (cleanupError) {
+        debugLog(`清理浏览器时发生错误:`, cleanupError);
+      }
       throw error;
+    } finally {
+      // 确保从会话管理器中移除
+      browserSessionManager.removeSession(browserSession);
     }
 
     debugLog(`[${id}] Google登录流程完成`);

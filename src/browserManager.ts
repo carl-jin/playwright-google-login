@@ -8,7 +8,7 @@ import path from "path";
 import { exec, ChildProcess } from "child_process";
 import { chromium, Browser, Page } from "@playwright/test";
 import fs from "fs/promises";
-import { debugLog, checkPortAvailable } from "./utils";
+import { debugLog, checkPortAvailable, killProcess } from "./utils";
 
 /**
  * 浏览器启动结果接口
@@ -20,6 +20,66 @@ export interface BrowserSession {
   profilePath: string;
   process: ChildProcess;
 }
+
+/**
+ * 全局浏览器会话管理器
+ */
+class BrowserSessionManager {
+  private sessions: Set<BrowserSession> = new Set();
+
+  /**
+   * 添加浏览器会话到管理器
+   */
+  addSession(session: BrowserSession): void {
+    this.sessions.add(session);
+    debugLog(`浏览器会话已添加到管理器，当前会话数: ${this.sessions.size}`);
+  }
+
+  /**
+   * 移除浏览器会话
+   */
+  removeSession(session: BrowserSession): void {
+    this.sessions.delete(session);
+    debugLog(`浏览器会话已从管理器移除，当前会话数: ${this.sessions.size}`);
+  }
+
+  /**
+   * 关闭所有浏览器会话
+   */
+  async closeAllSessions(): Promise<void> {
+    const sessionCount = this.sessions.size;
+    if (sessionCount === 0) {
+      debugLog('没有需要关闭的浏览器会话');
+      return;
+    }
+
+    debugLog(`开始关闭 ${sessionCount} 个浏览器会话...`);
+    
+    const closePromises = Array.from(this.sessions).map(async (session) => {
+      try {
+        await killProcess(session.process, session.port);
+        await session.browser.close();
+        debugLog(`已关闭浏览器会话 (端口: ${session.port})`);
+      } catch (error) {
+        debugLog(`关闭浏览器会话时发生错误 (端口: ${session.port}):`, error);
+      }
+    });
+
+    await Promise.allSettled(closePromises);
+    this.sessions.clear();
+    debugLog(`所有浏览器会话已关闭`);
+  }
+
+  /**
+   * 获取当前活跃的会话数量
+   */
+  getActiveSessionCount(): number {
+    return this.sessions.size;
+  }
+}
+
+// 创建全局实例
+export const browserSessionManager = new BrowserSessionManager();
 
 /**
  * 从 configs.json 加载配置
@@ -71,13 +131,16 @@ export async function launchBrowserSession(
   // 获取页面
   const page = await getPage(browser);
 
-  return {
+  const session: BrowserSession = {
     browser,
     page,
     port,
     profilePath,
     process: browserProcess,
   };
+  browserSessionManager.addSession(session);
+
+  return session;
 }
 
 /**

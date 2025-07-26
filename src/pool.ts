@@ -9,6 +9,7 @@ import { main } from './index';
 import { accountManager } from './accountManager';
 import { AccountInfo } from './googleLogin';
 import { logger, TaskResult } from './logger';
+import { browserSessionManager } from './browserManager';
 
 // 配置接口
 interface PoolConfig {
@@ -314,6 +315,44 @@ class TaskPool {
 }
 
 /**
+ * 设置信号处理
+ */
+function setupSignalHandlers(): void {
+  const cleanup = async (signal: string) => {
+    console.log(`\n🛑 收到信号 ${signal}，开始清理...`);
+    
+    try {
+      // 关闭所有浏览器会话
+      await browserSessionManager.closeAllSessions();
+      console.log('✅ 所有浏览器已关闭');
+    } catch (error) {
+      console.error('❌ 清理浏览器时发生错误:', error);
+    }
+    
+    console.log('👋 程序退出');
+    process.exit(0);
+  };
+
+  // 处理 Ctrl+C (SIGINT)
+  process.on('SIGINT', () => cleanup('SIGINT'));
+  
+  // 处理 SIGTERM
+  process.on('SIGTERM', () => cleanup('SIGTERM'));
+  
+  // 处理未捕获的异常
+  process.on('uncaughtException', (error) => {
+    console.error('💥 未捕获的异常:', error);
+    cleanup('uncaughtException');
+  });
+  
+  // 处理未处理的Promise拒绝
+  process.on('unhandledRejection', (reason, promise) => {
+    console.error('💥 未处理的Promise拒绝:', reason);
+    cleanup('unhandledRejection');
+  });
+}
+
+/**
  * 主启动函数
  * @param taskCount 要执行的任务数量，默认为5
  */
@@ -321,6 +360,9 @@ export async function runPool(taskCount: number = 5): Promise<void> {
   try {
     console.log('🎯 Google登录批量自动化系统');
     console.log('='.repeat(50));
+
+    // 设置信号处理
+    setupSignalHandlers();
 
     // 加载配置
     const config = await loadPoolConfig();
