@@ -1,0 +1,17 @@
+{
+  "poolSize": 2,
+  "browser": {
+    "executablePath": "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+    "windowSize": "1080,720",
+    "language": "en-US"
+  },
+  "timeouts": {
+    "portCheck": 120000,
+    "browserConnect": 10000
+  },
+  "platform": {
+    "os": "macos",
+    "autoDetected": false,
+    "note": "运行 'npm run setup' 来自动检测和配置浏览器路径"
+  }
+}
