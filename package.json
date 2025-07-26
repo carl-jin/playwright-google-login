@@ -1,0 +1,34 @@
+{
+  "name": "playwright-google-login",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "cross-env NODE_ENV=production esno src/index.ts",
+    "pool": "cross-env NODE_ENV=production esno src/pool.ts",
+    "pool:custom": "cross-env NODE_ENV=production esno run-pool.ts",
+    "logs": "esno scripts/logs.ts",
+    "logs:tail": "esno scripts/logs.ts --tail",
+    "logs:clear": "esno scripts/logs.ts --clear",
+    "logs:stats": "esno scripts/logs.ts --stats",
+    "setup": "esno scripts/setup.ts",
+    "info": "esno scripts/setup.ts --info"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "devDependencies": {
+    "@playwright/test": "^1.54.1",
+    "@types/node": "^24.1.0",
+    "concurrently": "^9.2.0",
+    "cross-env": "^10.0.0",
+    "esno": "^4.8.0",
+    "fs-extra": "^11.3.0",
+    "get-port": "^7.1.0",
+    "totp-generator": "^0.0.14"
+  },
+  "dependencies": {
+    "shx": "^0.4.0"
+  }
+}
